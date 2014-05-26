@@ -1,0 +1,162 @@
+\subsection{Описание состава пакетов системы}
+\subsubsection{Состав пакета client}
+Данный пакет содержит классы, входящие в состав агента-клиента. Основной класс ClientAgent, как видно из названия, реализует логику работы самого агента.
+
+\paragraph{Класс ClientAgent}
+Класс агента, как правило реализует основной метод setup(), в котором происходит инициализация агента, добавление поведений и другие операции, связанные с функционированием агента.
+Ниже показано содержимое метода setup() класса ClientAgent:
+\begin{verbatim}
+protected void setup() {
+    setEnabledO2ACommunication(true, 0);
+    Object[] args = getArguments();
+
+    switch(args.length) {
+        case 3:
+            serviceAID = (AID) args[2];
+        case 2:
+            agentInterface = (AgentInterface) args[1];
+        case 1:
+            ConditionalVariable startUpLatch = (ConditionalVariable) args[0];
+            startUpLatch.signal();
+    }
+
+    ((AgentEvents) agentInterface).onEvent(new AID(getName(), AID.ISLOCALNAME), AgentEvents.EVENT_CLIENT_READY);
+    addBehaviour(new O2ABehaviour());
+}
+\end{verbatim}
+По-сути, содержимое метода отвечает за настройку приема данных от внешних классов, не являющихся агентами. Это реализовано с помощью технологии Object2Agent communication. Для этого необходимо включить поддержку взаимодействия O2A методом setEnabledO2ACommunication().
+
+Далее, в контрукции switch() происходит выборка доступных аргументов, с которыми был запущен агент.
+
+Первым аргументом (порядок аргументов идет с конца) передается мьютекс ConditionalVariable, который позволяет внешнему окружению дождаться запуска и инициализации агента. В противном случае, данные агентом получены не будут.
+
+Второй аргумент хранит подписчика на события агента. Интерфейс AgentInterface имеет два интерфейса-потомка: AgentData и AgentEvents. Первый из них отвечает за уведомление о поступающих от агента данных, а второй~--- о возникающих событиях. В данном случае, агент посылает событие EVENT_CLIENT_READY, означающее готовность агента к функционированию.
+
+Третий аргумент хранит AID~--- идентификатор~--- агента-сервиса, за которым <<закреплен>> данный агент-клиент.
+
+В конце метода происходит добавление поведения O2ABehaviour, которое обрабатывает входящие данные от внешних модулей приложения.
+
+\paragraph{Класс ClientBehaviour}
+Основным методом объектов класса Behaviour является метод action(). Данный метод вызывается платформой по правилам, заложенным в реализации класса.
+
+\begin{verbatim}
+public void action() {
+    ACLMessage message = null;
+
+    switch (state) {
+        case SENDING:
+            message = new ACLMessage(ACLMessage.REQUEST);
+            message.addReceiver(aid);
+
+            try {
+                message.setContentObject(agentDataContainer);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            myAgent.send(message);
+            state++;
+            break;
+        case RECEIVING:
+            message = myAgent.receive();
+            if(message != null) {
+                try {
+                    agentDataContainer = (AgentDataContainer) message.getContentObject();
+                } catch (UnreadableException e) {
+                    e.printStackTrace();
+                }
+
+                AgentData agentData = (AgentData) ((ClientAgent) myAgent).getAgentInterface();
+                AID aid = new AID(myAgent.getName(), AID.ISLOCALNAME);
+                agentData.onData(aid, agentDataContainer);
+                done = true;
+            } else {
+                block();
+            }
+
+            break;
+    }
+}
+\end{verbatim}
+Функционирование основного поведения агента-клиента реализовано в виде <<машины состояний>>. На первом этапе поведение функционирует в состоянии отправки запроса агенту сервиса, для чего формируется соотвестствующее ACL сообщение. На втором~--- в ожидании ответа от сервиса. В конце выполнения поведения происходит уведомление агента о полученных данных от агента-сервиса.
+
+\paragraph{Класс O2ABehaviour}
+Класс O2ABehaviour содержит циклический опрос очереди O2A-сообщений. При отсутствии сообщений поведение блокируется методом block() до появления нового сообщения в очереди.
+\begin{verbatim}
+public void action() {
+    AgentDataContainer agentDataContainer = (AgentDataContainer) myAgent.getO2AObject();
+    if(agentDataContainer != null) {
+        myAgent.addBehaviour(new ClientBehaviour(myAgent, agentDataContainer));
+    } else {
+        block();
+    }
+}
+\end{verbatim}
+
+\subsubsection{Состав пакета service}
+\paragraph{Класс ServiceAgent}
+Основной класс пакета service~--- ServiceAgent. Его метод setup() аналогичен содержимому метода класса ClientAgent. Помимо этого, класс ServiceAgent реализует методы beforeMove() и afterMove()~--- это callback-методы, вызываемые платформой JADE, соотвественно до и после операции перемещения агента. Метод beforeMove() не содержит функциональной логики, а служит лишь для печати отладочной информации на консоль. Метод afterMove() добавляет новое поведение в состав агента, и посылает сообщение агенту-контроллеру о своем перемещении.
+\begin{verbatim}
+protected void afterMove() {
+    addBehaviour(new ServiceBehaviour(this));
+
+    System.out.println("After move: " + here());
+    ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+    msg.setConversationId(ControllerAgent.CONTROLLER_AGENT_CONVERSATION_ID);
+    AID dest = new AID(ContainerHoldersManager.CONTROLLER_AGENT_NAME, AID.ISLOCALNAME);
+    msg.setContent(getName());
+    try {
+        msg.setContentObject(here());
+    } catch (IOException e) {
+        e.printStackTrace();
+    }
+    msg.addReceiver(dest);
+    send(msg);
+}
+\end{verbatim}
+\paragraph{Класс ServiceAgent}
+Поведение агента-сервиса ServiceBehaviour содержит интерфейсы взаимодействия с базой данных узла посредством классов, предоставляемых пакетом db. Логически поведение разбито на две части: это обработка запроса с передачей его к СУБД и формирование и отправка ответа агенту-клиенту. Кроме этого, при получении сообщения с типом CANCEL сервис завершает свою работу.
+\begin{verbatim}
+public void action() {
+    ACLMessage msg = myAgent.receive();
+    if (msg != null) {
+        switch (msg.getPerformative()) {
+            case ACLMessage.REQUEST:
+                ACLMessage reply = msg.createReply();
+                reply.setPerformative(ACLMessage.INFORM);
+                AgentDataContainer agentDataContainer = null;
+
+                try {
+                    agentDataContainer = (AgentDataContainer) msg.getContentObject();
+                    System.out.print(agentDataContainer);
+                } catch (UnreadableException e) {
+                    e.printStackTrace();
+                }
+
+                agentDataContainer = dbw.execute(agentDataContainer);
+                agentDataContainer.setParam(AgentDataContainer.KEY_CONTAINER_NAME, myAgent.here().getName());
+
+                try {
+                    reply.setContentObject(agentDataContainer);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                myAgent.send(reply);
+                break;
+            case ACLMessage.CANCEL:
+                myAgent.doDelete();
+                break;
+        }
+    } else {
+        block();
+    }
+}
+\end{verbatim}
+
+\subsubsection{Состав пакета ctrl}
+Пакет ctrl включает в себя классы, осуществляющие организацию межагентного взаимодействия, управление контейнерами, входящими в состав платформы, уведомление внешних внеагентных компонентов о событиях внутри платформы.
+\paragraph{Класс ControllerAgent}
+Запускает поведение мониторинка контейнеров платформы.
+
+Уведомляет основной программный контроллер ContainerHolderManager о процедуре перемещения агентов-сервисов.
