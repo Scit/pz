@@ -1,0 +1,31 @@
+\documentclass[russian,utf8,nocolumnsxix,nocolumnxxxi,nocolumnxxxii]{eskdtext}
+\ESKDdepartment{Акционерное Московское общество}
+\ESKDcompany{завод имени И.~А.~Лихачева}
+\ESKDclassCode{31 1398}
+\ESKDtitle{Форсунка Ф-750}
+\ESKDdocName{Технические условия}
+\ESKDsignature{АБВГД ХХХХХХХХ}
+\ESKDauthor{Теренков~А.С.}
+\ESKDtitleApprovedBy{%
+Руководитель ОКБА}{Гусев~И.~И.}
+\ESKDtitleAgreedBy{%
+Директор АМО ЗИЛ}{Иванов~И.~И.}
+\ESKDtitleDesignedBy{%
+Главный инженер АМО ЗИЛ}{Теренков~А.С.}
+\ESKDtitleDesignedBy{%
+Руководитель разработки}{Зинкин~С.А.}
+\ESKDchecker{Зинкин~С.А.}
+\ESKDnormContr{Кучин~А.В.}
+\usepackage{tocloft}
+\usepackage{graphicx}
+\graphicspath{{chapter1/}{chapter2/}}
+\sloppy
+\begin{document}
+\maketitle
+\newpage
+\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
+\tableofcontents
+\newpage
+\include{chapter1}
+\include{chapter2}
+\end{document}
