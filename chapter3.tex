@@ -237,4 +237,141 @@ public class AMSListenerBehaviour extends AMSSubscriber {
 \end{itemize}
 
 \paragraph{Класс ContainerHoldersManager}
-Класс ContainerHoldersManager служит для взаимодействия
+Класс ContainerHoldersManager служит для организации системы распределенных узлов. В нем хранится список доступных на платфрме контейнеров, а также создает системный контейнер и запускает агента-контроллера. Помимо этого, он занимается обработкой событий, поступающих от объектов класса ContainerHolder и, в свою очередь, делегирует эти события собственным подписчикам (listeners).
+
+\subsubsection{Пакет db}
+Данный пакет состоит лишь из одного класса: DBWorker, который отвечает за всю логику взаимодействия с базами данных. Основным методом данного класса является метод execute(), который, как видно из названия выполняет запрос к базе и обрабатывает полученный ответ для выдачи результата запрашиваемому агенту-сервису.
+\begin{verbatim}
+public AgentDataContainer execute(AgentDataContainer agentDataContainer) {
+    ...
+    String dataType = AgentDataContainer.VALUE_DATA_TYPE_TABLES;
+
+    connection = DriverManager.getConnection(url, user, password);
+
+    if (agentDataContainer.getParam(KEY_REQUEST_STRING).equals(GET_TABLES_LIST)) {
+        resultSet = connection.getMetaData().getTables(null, "public", "%", new String[]{"TABLE"});
+    } else if (agentDataContainer.getDataLength() > 0) {
+        boolean verified = verify(connection, agentDataContainer);
+        if(verified) {
+            dataType = AgentDataContainer.VALUE_DATA_TYPE_EMPTY;
+            pst = connection.prepareStatement(agentDataContainer.getParam(KEY_REQUEST_STRING));
+
+            Object[] dataRow = agentDataContainer.getData().get(0);
+            for (int i = 0; i < agentDataContainer.getDataWidth(); i++) {
+                pst.setObject(i + 1, dataRow[i], agentDataContainer.getMetadata()[i].getType());
+            }
+
+            pst.executeUpdate();
+        }
+
+        resultSet = null;
+    } else {
+        dataType = AgentDataContainer.VALUE_DATA_TYPE_CONTENT;
+        pst = connection.prepareStatement(agentDataContainer.getParam(KEY_REQUEST_STRING));
+
+        resultSet = pst.executeQuery();
+    }
+
+    outputAgentDataContainer = ResponseMaker.makeResponse(resultSet, agentDataContainer);
+    outputAgentDataContainer.setParam(KEY_DATA_TYPE, dataType);
+    ...
+    return agentDataContainer;
+}
+\end{verbatim}
+В ветвлении if происходит определение типа входящего запроса:
+\begin{itemize}
+\item получение списка таблиц;
+\item операция модификации/добавления данных в таблице;
+\item операция получения данных из таблицы / RAW-SQL запрос.
+\end{itemize}
+Кроме того, в этом методе происходит верификация корректности запроса при обращении к таблицам: это необходимо для операций репликации на всех активных узлах.
+
+Соединение создается в строке connection = DriverManager.getConnection(). Класс DriverManager заведует драйверами, соединениями, а также трассировкой. В данном случае вызывается статический метод getConnection(). Этот метод просматривает список драйверов и, если находит подходящий к указанному URL, то создает и возвращает соединение. В противном случае выбрасывает исключение с текстом: "No suitable driver found". В качестве аргументов данный метод принимает URL к базе, имя и пароль пользователя.
+
+Запрос для исполнения формирутеся с помощью метода prepareStatement() класса Connection. Запрос может состоять как из одной лишь текстовой строки, так и содержать объекты-параметры. Первая задается непостредственно в аргуенте метода, а последние~--- добавляться в запрос методов setObject(). Исполнение производится методом executeQuery(), либо executeUpdate() для выполнения операций вставки и модификаций в базе.
+
+Ниже представлена архитектура JDBC, в рамках которой взаимодействует и базой данный, в том числе, и данное приложение, используя JDBC server.
+\begin{figure}[h]
+\center{\includegraphics[width=0.7\linewidth]{jdbc}}
+\caption{Взаимодействие Java-проложения с сервером БД}
+\label{3:jdbc}
+\end{figure}
+
+\subsubsection{Пакет data}
+\paragraph{Класс AgentDataContainer}
+Данный класс является одним из наиболее универсальным и используемых сущностей в архитектуре приложения. Он пронизвыает буквально все уровни распределенной системы: начиная от классов графического пользовательского интерфейса, заканчивая обработчиком взаимодействия с сервером базы данных на удаленном узле. Данная унификация дает существенное преимущество: до тех пор, пока архитектурный уровень приложения не нуждается в содержимом информации, передаваемой другим уровням, он никак не вмешивается в их содержимое, структуру и методы, являясь лишь промежуточным звеном в коммуникационной цепочке. Это позволяет, при необходимости, изменять, дополнять, расширять архитектуру приложения, внося минимальные исправления в состав остальных компонентов.
+\begin{figure}[h]
+\center{\includegraphics[width=0.5\linewidth]{comm-dia}}
+\caption{Коммуникационная модель взаимодействия компонентов системы}
+\label{3:comm-dia}
+\end{figure}
+
+Содержимое класса состоит из списка массива объектов, хранящих непосредственно табличные данные; массива типа <<Имя-Тип>> для хранения информации о типе и названии колонок данных; а также HashMap'a, содержащего набор <<Ключ-Значение>> для хранения таких параметров как: имя используемой таблицы, строки запроса и т.д.
+
+\paragraph{Класс QueryMaker}
+Класс QueryMaker реализует паттерн <<фабрика>> для объектов класса AgentDataContainer.
+
+Основные методы класса:
+\begin{itemize}
+\item selectTables()~--- производит формирование запроса выборки списка таблиц базы;
+\item selectTableContent()~--- производит выборку контента запрашиваемой таблицы;
+\item insertData()~--- выполняет добавление строки данных в таблицу;
+\item updateData()~--- выполняет модификацию строки данных в таблице.
+\end{itemize}
+
+\paragraph{Класс ResponseMaker}
+Класс ResponseMaker выполняет сериализацию возвращаемого результа запроса к базе данных. Основной (и единственный) метод класса~--- makeResponse(). Результатом его работы является сформированный объект класса AgentDataContainer, хранящий данные, метадату и дополнительные параметры ответа: имя таблицы и хэш-код ее метадыты.
+\begin{verbatim}
+public static AgentDataContainer makeResponse(ResultSet resultSet, AgentDataContainer agentDataContainer) {
+    NameTypePair[] metadata = null;
+    List<Object[]> data = null;
+    String metadataHash = "";
+
+    if (resultSet != null) {
+        try {
+            ResultSetMetaData rsmd = resultSet.getMetaData();
+            int columnCount = rsmd.getColumnCount();
+            MetadataHasher.reset();
+
+            metadata = new NameTypePair[columnCount];
+            for (int columnIndex = 1; columnIndex <= columnCount; columnIndex++) {
+                metadata[columnIndex - 1] = new NameTypePair();
+                String name = rsmd.getColumnName(columnIndex);
+                int type = rsmd.getColumnType(columnIndex);
+                metadata[columnIndex - 1].setName(name);
+                metadata[columnIndex - 1].setType(type);
+
+                MetadataHasher.add(type, name);
+            }
+            metadataHash = MetadataHasher.get();
+
+            data = new ArrayList<Object[]>();
+            while (resultSet.next()) {
+                Object[] row = new Object[columnCount];
+                for (int columnIndex = 1; columnIndex <= columnCount; columnIndex++) {
+                    row[columnIndex - 1] = resultSet.getObject(columnIndex);
+                }
+                data.add(row);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    String tableName = agentDataContainer.getParam(KEY_TABLE_NAME);
+    agentDataContainer = new AgentDataContainer(metadata,data);
+    agentDataContainer.setParam(KEY_TABLE_NAME, tableName);
+    agentDataContainer.setParam(KEY_METADATA_HASH, metadataHash);
+
+    return agentDataContainer;
+}
+\end{verbatim}
+
+\subsubsection{Пакет gui}
+Набор классов данного пакета реализует графический пользовательский интерфейс приложения. Включает в себя следующие классы:
+\begin{itemize}
+\item ClientMainFrame~--- главное окно приложения;
+\item ClientTable~--- табличный компонент для отображения данных;
+\item ContainerHoldersList~--- список, отображающий доступные контейнеры платформы;
+\item InsertDialog~--- модальное окно, осуществляющее добавление данных в таблицу.
+\end{itemize}
