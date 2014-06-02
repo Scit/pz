@@ -69,7 +69,7 @@
 \paragraph{Класс ClientAgent}
 Класс агента, как правило реализует основной метод setup(), в котором происходит инициализация агента, добавление поведений и другие операции, связанные с функционированием агента.
 Ниже показано содержимое метода setup() класса ClientAgent:
-\begin{verbatim}
+\begin{lstlisting}
 protected void setup() {
     setEnabledO2ACommunication(true, 0);
     Object[] args = getArguments();
@@ -87,7 +87,7 @@ protected void setup() {
     ((AgentEvents) agentInterface).onEvent(new AID(getName(), AID.ISLOCALNAME), AgentEvents.EVENT_CLIENT_READY);
     addBehaviour(new O2ABehaviour());
 }
-\end{verbatim}
+\end{lstlisting}
 По-сути, содержимое метода отвечает за настройку приема данных от внешних классов, не являющихся агентами. Это реализовано с помощью технологии Object2Agent communication. Для этого необходимо включить поддержку взаимодействия O2A методом setEnabledO2ACommunication().
 
 Далее, в контрукции switch() происходит выборка доступных аргументов, с которыми был запущен агент.
@@ -108,7 +108,7 @@ protected void setup() {
 \end{figure}
 Основным методом объектов класса Behaviour является метод action(). Данный метод вызывается платформой по правилам, заложенным в реализации класса.
 
-\begin{verbatim}
+\begin{lstlisting}
 public void action() {
     ACLMessage message = null;
 
@@ -146,13 +146,13 @@ public void action() {
             break;
     }
 }
-\end{verbatim}
+\end{lstlisting}
 Функционирование основного поведения агента-клиента реализовано в виде <<машины состояний>>. На первом этапе поведение функционирует в состоянии отправки запроса агенту сервиса, для чего формируется соотвестствующее ACL сообщение. На втором~--- в ожидании ответа от сервиса. В конце выполнения поведения происходит уведомление агента о полученных данных от агента-сервиса.
 На рисунке~\ref{3:client-beh} представлена диаграмма деятельности данного класса.
 
 \paragraph{Класс O2ABehaviour}
 Класс O2ABehaviour содержит циклический опрос очереди O2A-сообщений. При отсутствии сообщений поведение блокируется методом block() до появления нового сообщения в очереди.
-\begin{verbatim}
+\begin{lstlisting}
 public void action() {
     AgentDataContainer agentDataContainer = (AgentDataContainer) myAgent.getO2AObject();
     if(agentDataContainer != null) {
@@ -161,12 +161,12 @@ public void action() {
         block();
     }
 }
-\end{verbatim}
+\end{lstlisting}
 
 \subsubsection{Состав пакета service}
 \paragraph{Класс ServiceAgent}
 Основной класс пакета service~--- ServiceAgent. Его метод setup() аналогичен содержимому метода класса ClientAgent. Помимо этого, класс ServiceAgent реализует методы beforeMove() и afterMove()~--- это callback-методы, вызываемые платформой JADE, соотвественно до и после операции перемещения агента. Метод beforeMove() не содержит функциональной логики, а служит лишь для печати отладочной информации на консоль. Метод afterMove() добавляет новое поведение в состав агента, и посылает сообщение агенту-контроллеру о своем перемещении.
-\begin{verbatim}
+\begin{lstlisting}
 protected void afterMove() {
     addBehaviour(new ServiceBehaviour(this));
 
@@ -183,7 +183,7 @@ protected void afterMove() {
     msg.addReceiver(dest);
     send(msg);
 }
-\end{verbatim}
+\end{lstlisting}
 
 \paragraph{Класс ServiceBehaviour}
 \begin{figure}[h!]
@@ -193,7 +193,7 @@ protected void afterMove() {
 \end{figure}
 
 Поведение агента-сервиса ServiceBehaviour содержит интерфейсы взаимодействия с базой данных узла посредством классов, предоставляемых пакетом db. Логически поведение разбито на две части: это обработка запроса с передачей его к СУБД и формирование и отправка ответа агенту-клиенту. Кроме этого, при получении сообщения с типом CANCEL сервис завершает свою работу.
-\begin{verbatim}
+\begin{lstlisting}
 public void action() {
     ACLMessage msg = myAgent.receive();
     if (msg != null) {
@@ -229,7 +229,7 @@ public void action() {
         block();
     }
 }
-\end{verbatim}
+\end{lstlisting}
 На рисунке \ref{3:service-beh} представлена диаграмма деятельности данного класса.
 
 \subsubsection{Состав пакета ctrl}
@@ -241,7 +241,7 @@ public void action() {
 
 \paragraph{Класс AMSListenerBahaviour}
 Данное поведение регистрирует обработчик в плтаформе JADE. Внутри обработчика добавления новых контейнеров просходит получение идентификатора контейнера и передача его контроллеру приложения.
-\begin{verbatim}
+\begin{lstlisting}
 public class AMSListenerBehaviour extends AMSSubscriber {
     public void installHandlers(Map handlersTable) {
         handlersTable.put(AddedContainer.NAME, new AddedContainerHandler());
@@ -256,7 +256,7 @@ public class AMSListenerBehaviour extends AMSSubscriber {
         }
     }
 }
-\end{verbatim}
+\end{lstlisting}
 
 \paragraph{Класс ContainerHolder}
 Данный класс хранит всю информацию, относящующся к конкретному контейнеру, а также предоставляет все интерфейсы для взаимодействия агентов клиента и сервиса внешним компонентам приложения. Основые поля класса:
@@ -280,7 +280,7 @@ public class AMSListenerBehaviour extends AMSSubscriber {
 
 \subsubsection{Пакет db}
 Данный пакет состоит лишь из одного класса: DBWorker, который отвечает за всю логику взаимодействия с базами данных. Основным методом данного класса является метод execute(), который, как видно из названия выполняет запрос к базе и обрабатывает полученный ответ для выдачи результата запрашиваемому агенту-сервису.
-\begin{verbatim}
+\begin{lstlisting}
 public AgentDataContainer execute(AgentDataContainer agentDataContainer) {
     ...
     String dataType = AgentDataContainer.VALUE_DATA_TYPE_TABLES;
@@ -316,7 +316,7 @@ public AgentDataContainer execute(AgentDataContainer agentDataContainer) {
     ...
     return agentDataContainer;
 }
-\end{verbatim}
+\end{lstlisting}
 В ветвлении if происходит определение типа входящего запроса:
 \begin{itemize}
 \item получение списка таблиц;
@@ -360,7 +360,7 @@ public AgentDataContainer execute(AgentDataContainer agentDataContainer) {
 
 \paragraph{Класс ResponseMaker}
 Класс ResponseMaker выполняет сериализацию возвращаемого результа запроса к базе данных. Основной (и единственный) метод класса~--- makeResponse(). Результатом его работы является сформированный объект класса AgentDataContainer, хранящий данные, метадату и дополнительные параметры ответа: имя таблицы и хэш-код ее метадыты.
-\begin{verbatim}
+\begin{lstlisting}
 public static AgentDataContainer makeResponse(ResultSet resultSet, AgentDataContainer agentDataContainer) {
     NameTypePair[] metadata = null;
     List<Object[]> data = null;
@@ -404,7 +404,7 @@ public static AgentDataContainer makeResponse(ResultSet resultSet, AgentDataCont
 
     return agentDataContainer;
 }
-\end{verbatim}
+\end{lstlisting}
 
 \subsubsection{Пакет gui}
 Набор классов данного пакета реализует графический пользовательский интерфейс приложения. Для егого используется библиотека Swing. Swing относится к библиотеке классов, которая представляет собой набор библиотек для разработки графических оболочек.
@@ -421,14 +421,14 @@ public static AgentDataContainer makeResponse(ResultSet resultSet, AgentDataCont
 Как уже упоминалось выше~--- класс ClientMainFrame реализует главное окно приложения.
 
 Конструктор класса содержит вызов метода initGui(), в котором находятся команды, создающие элементы пользовательского интерфейса: их свойства, параметраы и расположение. После этого производится добавление объекта класса в список подписчиков класса ContainerHoldersManager с его последующим инициализированием.
-\begin{verbatim}
+\begin{lstlisting}
 public ClientMainFrame() {
     initGui();
 
     ContainerHoldersManager.addListener(this);
     ContainerHoldersManager.init();
 }
-\end{verbatim}
+\end{lstlisting}
 
 Основные графические компоненты главного окна:
 \begin{itemize}
@@ -440,7 +440,7 @@ public ClientMainFrame() {
 \end{itemize}
 
 Расположение элементов осуществляется с помощью механизма <<ограничений>>, накладываемых на каждый компонент. Рассмотрим это на примере компонента ClientTable:
-\begin{verbatim}
+\begin{lstlisting}
 GridBagConstraints c = new GridBagConstraints();
 ...
 c.fill = GridBagConstraints.BOTH;
@@ -448,7 +448,7 @@ c.weightx = 4.0;
 c.weighty = 1.0;
 c.gridy = 0;
 add(new JScrollPane(table), c);
-\end{verbatim}
+\end{lstlisting}
 Здесь в первой строке происходит создание нового объекта класса <<ограничений>> GridBagConstraints. Далее происходит установка параметров <<растягивания>> компонентов. Константа BOTH указывает компоненту занимать родительское пространство по вертикали и горизонтали. Помимо этого, доступны значения: HORIZONTAL и VERTICAL. Поля weightx и weighty отвечают за <<вес>> компонента по горизонтали и вертикали. <<Вес>> компонента определяет долю занимаемого пространства среди других элементов графического интерфейса, принадлежащих одному родительскому классу. Параметр gridy (и аналогичный ему gridx) определяет положение элемента по высоте (этаж) среди других элементов одного родителя. В последней строке происходит добавление компонента таблицы в состав главного окна приложения, предварительно помещенного в элемент вертикальной прокрутки.
 
 Класс реализует несколько интерфейсов: CHMListener, TableModelListener, ListSelectionListener, ActionListener. Все они служат для обработки событий, поступающих от графических компонентов, а также от класса ControllerHoldersManager для обработки событий, возникающих в ядре системы.
@@ -487,9 +487,9 @@ add(new JScrollPane(table), c);
 \subsubsection{Сборка и развертывание приложения на пользовательском (основном) компьютере}
 Для генерации jar файла проекта необходимо запустить в корне проекта команду "mvn package". 
 Перед запуском любого приложения, использующего в своем составе jade-агенты, необходимо запустить платформу JADE. Для этого необходимо набрать в командной строке следующую команду:
-\begin{verbatim}
+\begin{lstlisting}
 java -cp ~/Downloads/jade.jar jade.Boot -gui
-\end{verbatim}
+\end{lstlisting}
 Это запускает платформу вместе с графическим интерфейсом администрирования (рисунок~ref{3:jade-admin}).
 \begin{figure}[h]
 \center{\includegraphics[width=0.7\linewidth]{jade-admin}}
@@ -498,11 +498,11 @@ java -cp ~/Downloads/jade.jar jade.Boot -gui
 \end{figure}
 
 Далее запускаем проект в виртуальной машине Java:
-\begin{verbatim}
+\begin{lstlisting}
 java -cp target/diploma-1.0-SNAPSHOT-jar-with-dependencies.jar \
     -Dswing.defaultlaf=javax.swing.plaf.nimbus.NimbusLookAndFeel \
         scit.diploma.gui.ClientMainFrame
-\end{verbatim}
+\end{lstlisting}
 
 \subsubsection{Подготовка и подключение контейнеров на удаленных узлах}
 Благодаря технологии мобильных агентов необходимость в установке и настройке <<серверной>> части разрабатываемого проекта отсутствует, однако, существует необходимость некоторой настройки системного окружения и внешних используемых сервисов и приложений на удаленных узлах.
@@ -514,9 +514,9 @@ java -cp target/diploma-1.0-SNAPSHOT-jar-with-dependencies.jar \
         \item пароль: "postgres".
     \end{itemize}
 \item запустить платформу JADE следующей командой:
-    \begin{verbatim}
+    \begin{lstlisting}
     jade java -cp ~/Downloads/jade.jar jade.Boot -host <hostname> -container <name>
-    \end{verbatim}
+    \end{lstlisting}
 \end{enumerate}
 Где:
 \begin{itemize}

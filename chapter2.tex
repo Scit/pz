@@ -95,27 +95,27 @@ LADT (local agent descriptor table)~--- тоже самое что и GADT, но
 \end{figure}
 В JADE можно выделить три типа поведения.
 <<Единоразовое>> поведение. Данный тип поведения завершается сразу, и его метод action() выполняется только один раз. jade.core.behaviours.OneShotBehaviour уже реализовывает метод done(), возвращая true, и может быть удобным образом пронаследован, для реализации данного типа поведения.
-\begin{verbatim}
+\begin{lstlisting}
 public class  MyOneShotBehaviour extends OneShotBehaviour { 
    public void action() { 
        // perform operation X 
    } 
  }
-\end{verbatim}
+\end{lstlisting}
 В данном примере операция X выполнится один раз.
 
 <<Циклическое>> поведение никогда не завершается, и его метод action() выполняет одни и те же операции при каждом вызове. jade.core.behaviours.CyclicBehaviour уже реализовывает метод done(), всегда возвращая false, и может быть пронаследован для реализации циклических моделей поведения.
-\begin{verbatim}
+\begin{lstlisting}
 public class  MyCyclicBehaviour extends CyclicBehaviour { 
    public void action() { 
        // perform operation Y 
    } 
 }
-\end{verbatim}
+\end{lstlisting}
 Операция Y будет выполняться в цикле бесконечно (пока агент, имеющий это поведение, не будет завершен).
 
 Общий случай поведения включает в себя статус, в зависимости от которого выполняются различные операции. Выполнение действий завершается, когда встречается данное условие.
-\begin{verbatim}
+\begin{lstlisting}
 public  class MyThreeStepBehaviour extends Behaviour { 
    private int step = 0; 
    public void action() { 
@@ -139,14 +139,13 @@ public  class MyThreeStepBehaviour extends Behaviour {
         return step == 3; 
     } 
 }
-\end{verbatim}
+\end{lstlisting}
 Jade предоставляет возможность соединять простые формы поведения для создания более сложных (SequentialBehaviour, ParallelBehaviour и FSMBehaviour). Помимо этого, Jade содержит два готовых класса (в пакете jade.core.behaviours), с помощью которых можно легко реализовать поведение, позволяющее выполнять определённые действия в заданные моменты времени.
 \begin{itemize}
 \item WakerBehaviour, в котором методы action() и done() уже реализованы таким образом, что вызывается абстрактный метод handleElapsedTimeout() после того, как истечет заданный промежутка времени (указанный в конструкторе);
-\begin{verbatim}
+\begin{lstlisting}
 public class  MyAgent extends Agent { 
    protected void setup() { 
-       System.out.println(“Adding waker  behaviour”); 
        addBehaviour(new WakerBehaviour(this,  10000) { 
            protected void handleElapsedTimeout() { 
                // perform operation X 
@@ -154,10 +153,10 @@ public class  MyAgent extends Agent {
        }); 
    } 
 }
-\end{verbatim}
+\end{lstlisting}
 В данном случае операция X выполнится через 10 секунд после того, как будет выведена надпись <<Adding waker behaviour>>.
 \item В TickerBehaviour методы action() и done() реализованы таким образом, что вызывают циклически абстрактный метод onTick(), ожидая некоторое (заданное в конструкторе) время после каждого выполнения. TickerBehaviour никогда не завершится. 
-\begin{verbatim}
+\begin{lstlisting}
 public class  MyAgent extends Agent { 
    protected void setup() { 
        addBehaviour(new TickerBehaviour(this,  10000) { 
@@ -167,7 +166,7 @@ public class  MyAgent extends Agent {
        }); 
    } 
 }
-\end{verbatim}
+\end{lstlisting}
 Операция Y будет выполняться с периодом в 10 секунд.
 \end{itemize}
 
