@@ -1,0 +1,6 @@
+*.aux
+main.pdf
+*.swp
+*.log
+*.toc
+revision.tex
