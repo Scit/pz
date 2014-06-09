@@ -1,10 +1,10 @@
-\documentclass[russian,utf8,nocolumnsxix,nocolumnxxxi,nocolumnxxxii]{eskdtext}
+\documentclass[russian,utf8,nocolumnsxix,nocolumnxxxi,nocolumnxxxii,nocolumnvii,nocolumnviii,floatsection,pointsubsection]{eskdtext}
 \ESKDdepartment{Министерство образования РФ}
 \ESKDcompany{Пензенский Государственный Университет}
 \ESKDclassCode{31 1398}
 \ESKDtitle{Распределенная агентно-ориентированная система доступа к базам данных}
 \ESKDdocName{Технические условия}
-\ESKDsignature{АБВГД ХХХХХХХХ}
+\ESKDsignature{ПГУ 1.230101.24.001 ПЗ}
 \ESKDauthor{Теренков~А.С.}
 \ESKDtitleApprovedBy{%
 a}{Гусев~И.~И.}
@@ -14,8 +14,11 @@ a}{Иванов~И.~И.}
 a}{Теренков~А.С.}
 \ESKDtitleDesignedBy{%
 a}{Зинкин~С.А.}
+\ESKDcolumnIX{ФВТ, каф. ВТ, гр 09ВВ1}
 \ESKDchecker{Зинкин~С.А.}
 \ESKDnormContr{Кучин~А.В.}
+\ESKDsectSkip{subsection}{15mm}{10mm}
+\ESKDsectSkip{subsubsection}{13mm}{9mm}
 \usepackage{tocloft}
 \usepackage{graphicx}
 \usepackage{listings}
@@ -23,6 +26,9 @@ a}{Зинкин~С.А.}
 \usepackage{eskdlongtable}
 \usepackage{multirow}
 \usepackage{bigstrut}
+\usepackage{textcase}
+\usepackage{setspace}
+\usepackage[T2A,T1]{fontenc}
 
 \lstset{breaklines=true}
 \lstset{basicstyle=\small\ttfamily}
@@ -31,20 +37,33 @@ a}{Зинкин~С.А.}
 \graphicspath{{chapter0/}{chapter1/}{chapter2/}{chapter3/}}
 \sloppy
 \begin{document}
+\makeatletter
+\renewcommand{\paragraph}{\@startsection{paragraph}{4}{0ex}%
+   {-3.25ex plus -1ex minus -0.2ex}%
+   {1.5ex plus 0.2ex}%
+   {\normalfont\normalsize\hspace{2mm}}}
+\makeatother
+
+\stepcounter{secnumdepth}
+\stepcounter{tocdepth}
+
+\renewcommand{\theenumi}{\arabic{enumi}}
+\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
+\setcounter{secnumdepth}{4}
+
 \include{review}
 \maketitle
 \newpage
-\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
 \tableofcontents
 \newpage
 \include{intro}
-%\include{chapter0}
-%\include{chapter1}
-%\include{chapter2}
-%\include{chapter3}
-%\include{chapter4}
-%\include{bzhd}
+\include{chapter0}
+\input{chapter1}
+\input{chapter2}
+\include{chapter3}
+\include{chapter4}
 \include{econom}
+\include{bzhd}
 \include{conclusion}
 \include{bible}
 \end{document}
